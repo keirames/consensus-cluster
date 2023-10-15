@@ -8,6 +8,30 @@ import (
 	"time"
 )
 
+type CMState int
+
+const (
+	Follower CMState = iota
+	Candidate
+	Leader
+	Dead
+)
+
+func (s CMState) String() string {
+	switch s {
+	case Follower:
+		return "Follower"
+	case Candidate:
+		return "Candidate"
+	case Leader:
+		return "Leader"
+	case Dead:
+		return "Dead"
+	default:
+		panic("unreachable")
+	}
+}
+
 type Server struct{}
 
 // ConsensusModule (CM) implements a single node of Raft consensus.
@@ -27,6 +51,8 @@ type ConsensusModule struct {
 
 	// persistent Raft state on all servers.
 	currentTerm int
+
+	state CMState
 }
 
 func New() *ConsensusModule {
@@ -37,6 +63,17 @@ func New() *ConsensusModule {
 func (cm *ConsensusModule) log(format string, args ...any) {
 	format = fmt.Sprintf("[%d] ", cm.id) + format
 	log.Printf(format, args...)
+}
+
+func (cm *ConsensusModule) startElection() {
+	cm.state = Candidate
+	cm.currentTerm += 1
+	cm.log("becomes Candidate (currentTerm=%d); log=%v", cm.currentTerm)
+
+	// Send RequestVote RPCs to all other servers concurrently.
+	for _, peerID := range cm.peerIds {
+		go func(peerID int) {}(peerID)
+	}
 }
 
 func (cm *ConsensusModule) runElectionTimer() {
@@ -51,6 +88,7 @@ func (cm *ConsensusModule) runElectionTimer() {
 	for {
 		<-ticker.C
 		fmt.Println("ticker end")
+		return
 	}
 }
 
