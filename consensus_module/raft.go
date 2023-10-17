@@ -1,4 +1,4 @@
-package main
+package consensusmodule
 
 import (
 	"fmt"
@@ -42,8 +42,8 @@ type ConsensusModule struct {
 	// id is the server ID of this CM.
 	id int
 
-	// peerIds lists the IDs of our peers in the cluster.
-	peerIds []int
+	// peerIDs lists the IDs of our peers in the cluster.
+	peerIDs []int
 
 	// server is the server containing this CM. It's used to issue RPC calls
 	// to peers.
@@ -53,10 +53,21 @@ type ConsensusModule struct {
 	currentTerm int
 
 	state CMState
+
+	// Reset when receive a ping from Leader
+	electionResetEvent time.Time
 }
 
-func New() *ConsensusModule {
+type Opts struct {
+	ID int
+}
+
+func New(opts *Opts) *ConsensusModule {
 	cm := new(ConsensusModule)
+	cm.electionResetEvent = time.Now()
+	cm.peerIDs = []int{1, 2, 3}
+	cm.id = opts.ID
+
 	return cm
 }
 
@@ -71,12 +82,12 @@ func (cm *ConsensusModule) startElection() {
 	cm.log("becomes Candidate (currentTerm=%d); log=%v", cm.currentTerm)
 
 	// Send RequestVote RPCs to all other servers concurrently.
-	for _, peerID := range cm.peerIds {
+	for _, peerID := range cm.peerIDs {
 		go func(peerID int) {}(peerID)
 	}
 }
 
-func (cm *ConsensusModule) runElectionTimer() {
+func (cm *ConsensusModule) RunElectionTimer() {
 	timeoutDuration := cm.genRandElectionTimeout()
 	termStarted := cm.currentTerm
 
@@ -87,8 +98,11 @@ func (cm *ConsensusModule) runElectionTimer() {
 
 	for {
 		<-ticker.C
-		fmt.Println("ticker end")
-		return
+
+		if elapsed := time.Since(cm.electionResetEvent); elapsed >= timeoutDuration {
+			fmt.Println("start election!!!")
+			return
+		}
 	}
 }
 
