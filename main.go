@@ -16,6 +16,11 @@ func (s *Service) Hello(request string, reply *string) error {
 	return nil
 }
 
+func (s *Service) HealthCheck(request string, reply *string) error {
+	fmt.Println("healthy check from leader")
+	return nil
+}
+
 func startRPCServer(address string) {
 	rpc.RegisterName("Service", new(Service))
 
@@ -59,6 +64,14 @@ func startRPCServer(address string) {
 				fmt.Println("client call fail", err)
 				continue
 			}
+		}
+	}()
+
+	healthCheckTicker := time.NewTicker(time.Millisecond * 100)
+	go func() {
+		for {
+			<-ticker.C
+
 		}
 	}()
 

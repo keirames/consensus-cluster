@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/rpc"
 	"sync"
 	"time"
 )
@@ -33,6 +34,22 @@ func (s CMState) String() string {
 }
 
 type Server struct{}
+
+func (s *Server) sendHealthCheckSignalToAllPeer(peerIDs []int) {
+	for _, id := range peerIDs {
+		client, err := rpc.Dial("tcp", "localhost:300"+string(id))
+		if err != nil {
+			fmt.Println("send health check to peer fail", err)
+			continue
+		}
+
+		err = client.Call("Service.HealthCheck", "", nil)
+		if err != nil {
+			fmt.Println("fail to send health check signal to peer", err)
+			continue
+		}
+	}
+}
 
 // ConsensusModule (CM) implements a single node of Raft consensus.
 type ConsensusModule struct {
@@ -74,6 +91,22 @@ func New(opts *Opts) *ConsensusModule {
 func (cm *ConsensusModule) log(format string, args ...any) {
 	format = fmt.Sprintf("[%d] ", cm.id) + format
 	log.Printf(format, args...)
+}
+
+func (cm *ConsensusModule) sendHealthCheckSignal() {
+	cm.mu.Lock()
+	curState := cm.state
+	cm.mu.Unlock()
+	if curState == Leader {
+		// remove self
+		var peerIDs []int
+		for _, id := range peerIDs {
+			if id != cm.id {
+				peerIDs = append(peerIDs, id)
+			}
+		}
+		cm.server.sendHealthCheckSignalToAllPeer(peerIDs)
+	}
 }
 
 func (cm *ConsensusModule) startElection() {
