@@ -67,14 +67,6 @@ func startRPCServer(address string) {
 		}
 	}()
 
-	healthCheckTicker := time.NewTicker(time.Millisecond * 100)
-	go func() {
-		for {
-			<-ticker.C
-
-		}
-	}()
-
 	fmt.Println("listening on port:", address)
 }
 
